@@ -9,7 +9,6 @@ print("---------------------")
 print(df.isnull().sum()) #missing values
 
 print("---------------------")
-
 #class distribution
 print(df['is_duplicate'].value_counts())
 print(df['is_duplicate'].value_counts(normalize=True))
