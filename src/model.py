@@ -22,10 +22,10 @@ class UncertaintyBERT(BertPreTrainedModel):
         pooled_output = outputs[1]
         pooled_output = self.dropout(pooled_output)
         
-        # 1. Prediction Head
+        # Prediction Head
         logits = self.classifier(pooled_output)
         
-        # 2. Uncertainty Head 
+        # Uncertainty Head 
         log_var = self.uncertainty(pooled_output)
         
         loss = None

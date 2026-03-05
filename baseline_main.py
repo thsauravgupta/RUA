@@ -1,5 +1,6 @@
 import torch
-from transformers import BertForSequenceClassification, BertTokenizer, AdamW
+from transformers import BertForSequenceClassification, BertTokenizer
+from torch.optim import AdamW 
 from torch.utils.data import DataLoader, TensorDataset
 import pandas as pd
 
