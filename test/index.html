@@ -1,0 +1,611 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>RUA-BERT: Robust Uncertainty Aware Transformers</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        /* Custom Chart Container Styles as per requirements */
+        .chart-container {
+            position: relative;
+            width: 100%;
+            max-width: 600px;
+            margin-left: auto;
+            margin-right: auto;
+            height: 300px; /* Base height */
+            max-height: 400px;
+        }
+        @media (min-width: 768px) {
+            .chart-container {
+                height: 350px;
+            }
+        }
+        
+        /* Architecture Diagram Styles */
+        .arch-box {
+            transition: all 0.3s ease;
+            cursor: pointer;
+        }
+        .arch-box:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+        }
+        .arch-active {
+            border-color: #3b82f6 !important; /* blue-500 */
+            background-color: #eff6ff !important; /* blue-50 */
+        }
+
+        /* Custom scrollbar for cleanliness */
+        ::-webkit-scrollbar {
+            width: 8px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #f1f1f1; 
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #cbd5e1; 
+            border-radius: 4px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #94a3b8; 
+        }
+    </style>
+    <!-- Chosen Palette: Warm Neutral Academic -->
+    <!-- Application Structure Plan:
+         1. Hero Section: Immediate hook with the core problem (Noise) vs. Solution (RUA-BERT).
+         2. Context & Definitions: Interactive cards defining Aleatoric vs. Epistemic uncertainty (the foundation).
+         3. The Challenge: A dynamic chart illustrating the "Memorization Problem" in standard BERT to visualize the "Why".
+         4. Literature Timeline: Vertical interactive list to explore the evolution of the field (Hüllermeier to Song et al.).
+         5. The RUA-BERT Solution: An interactive schematic diagram of the proposed architecture. Users click components to understand the "Dual-Head" mechanism.
+         6. Methodology & Tech Stack: Grid layout detailing the implementation plan and experiment setup.
+         7. Why this structure: It follows the logical narrative of a research proposal: Context -> Problem -> Previous Work -> Solution -> Implementation. The interactive diagram is central to explaining the complex "Disentangled Uncertainty" concept without dense text.
+    -->
+    <!-- Visualization & Content Choices:
+         1. Interactive Concept Cards (HTML/JS): To explain AU vs EU definitions clearly. Goal: Inform.
+         2. Line Chart (Chart.js): To simulate/illustrate "Overfitting/Memorization" of noisy labels over epochs. Goal: Change/Compare. Justification: Visualizing the drop in validation accuracy is more powerful than text.
+         3. Literature Timeline (HTML/JS): Interactive list. Goal: Organize. Justification: Collapses dense citation info into a clean, explorable format.
+         4. Architecture Diagram (HTML/CSS/JS): A flow diagram built with Divs. Goal: Inform/Structure. Justification: Shows data flow (Input -> BERT -> Heads) interactively. NO SVG used.
+         5. Tech Stack Grid (HTML): Simple icon-based grid. Goal: Inform.
+         6. Dataset Donut Chart (Chart.js): Shows the 70/30 noise split. Goal: Inform.
+    -->
+    <!-- CONFIRMATION: NO SVG graphics used. NO Mermaid JS used. -->
+</head>
+<body class="bg-stone-50 text-stone-800 font-sans leading-relaxed selection:bg-blue-100 selection:text-blue-800">
+
+    <!-- Navigation -->
+    <nav class="sticky top-0 z-50 bg-white/90 backdrop-blur-sm border-b border-stone-200 shadow-sm">
+        <div class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex justify-between items-center h-16">
+                <div class="flex-shrink-0 flex items-center">
+                    <span class="font-bold text-xl tracking-tight text-blue-900">RUA-BERT <span class="text-stone-400 font-normal text-sm ml-2 hidden sm:inline">Research Proposal</span></span>
+                </div>
+                <div class="hidden md:flex space-x-8">
+                    <button onclick="scrollToSection('context')" class="text-stone-600 hover:text-blue-600 px-3 py-2 rounded-md text-sm font-medium transition-colors">Context</button>
+                    <button onclick="scrollToSection('problem')" class="text-stone-600 hover:text-blue-600 px-3 py-2 rounded-md text-sm font-medium transition-colors">The Problem</button>
+                    <button onclick="scrollToSection('solution')" class="text-stone-600 hover:text-blue-600 px-3 py-2 rounded-md text-sm font-medium transition-colors">The Solution</button>
+                    <button onclick="scrollToSection('tech')" class="text-stone-600 hover:text-blue-600 px-3 py-2 rounded-md text-sm font-medium transition-colors">Implementation</button>
+                </div>
+                <!-- Mobile menu button -->
+                <div class="md:hidden flex items-center">
+                    <button id="mobile-menu-btn" class="text-stone-600 hover:text-blue-600 focus:outline-none">
+                        <span class="text-2xl">☰</span>
+                    </button>
+                </div>
+            </div>
+        </div>
+        <!-- Mobile Menu Panel -->
+        <div id="mobile-menu" class="hidden md:hidden bg-white border-t border-stone-200">
+            <div class="px-2 pt-2 pb-3 space-y-1 sm:px-3">
+                <button onclick="scrollToSection('context')" class="block w-full text-left text-stone-600 hover:bg-stone-50 hover:text-blue-600 px-3 py-2 rounded-md text-base font-medium">Context</button>
+                <button onclick="scrollToSection('problem')" class="block w-full text-left text-stone-600 hover:bg-stone-50 hover:text-blue-600 px-3 py-2 rounded-md text-base font-medium">The Problem</button>
+                <button onclick="scrollToSection('solution')" class="block w-full text-left text-stone-600 hover:bg-stone-50 hover:text-blue-600 px-3 py-2 rounded-md text-base font-medium">The Solution</button>
+                <button onclick="scrollToSection('tech')" class="block w-full text-left text-stone-600 hover:bg-stone-50 hover:text-blue-600 px-3 py-2 rounded-md text-base font-medium">Implementation</button>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Main Content Wrapper -->
+    <main class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-10 space-y-16">
+
+        <!-- Header / Hero -->
+        <header class="text-center space-y-6 animate-fade-in-up">
+            <div class="inline-block px-3 py-1 rounded-full bg-blue-100 text-blue-800 text-xs font-semibold tracking-wide uppercase mb-2">Research Proposal</div>
+            <h1 class="text-4xl md:text-5xl font-extrabold text-stone-900 tracking-tight">
+                Disentangled Uncertainty as a <br class="hidden sm:block" /> Robustness Mechanism
+            </h1>
+            <p class="text-xl text-stone-600 max-w-3xl mx-auto">
+                Mitigating Label Noise in Transformers via Aleatoric-Epistemic Decomposition. A proposal to fix the "Learnability Problem" in BERT without requiring clean validation data.
+            </p>
+            <div class="flex justify-center gap-4 pt-4">
+                <button onclick="scrollToSection('solution')" class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-6 rounded-lg shadow-lg transition transform hover:-translate-y-0.5">
+                    Explore RUA-BERT
+                </button>
+                <button onclick="scrollToSection('problem')" class="bg-white border border-stone-300 text-stone-700 hover:bg-stone-50 font-bold py-3 px-6 rounded-lg shadow-sm transition">
+                    View the Problem
+                </button>
+            </div>
+        </header>
+
+        <!-- Section 1: Context & Definitions -->
+        <section id="context" class="scroll-mt-24">
+            <div class="mb-8">
+                <h2 class="text-2xl font-bold text-stone-900 mb-2">1. Understanding Uncertainty</h2>
+                <p class="text-stone-600 leading-relaxed">
+                    Before building robust models, we must distinguish between "bad data" and "model confusion." This section explores the taxonomy established by Hüllermeier and Waegeman, which is the foundation of this research. Click the cards below to dive into the two types of uncertainty.
+                </p>
+            </div>
+
+            <div class="grid md:grid-cols-2 gap-6">
+                <!-- Aleatoric Card -->
+                <div class="bg-white rounded-xl shadow-sm border border-stone-200 p-6 hover:shadow-md transition cursor-pointer group" onclick="toggleDefinition('aleatoric')">
+                    <div class="flex items-start justify-between">
+                        <div class="flex items-center gap-3">
+                            <div class="w-10 h-10 rounded-full bg-orange-100 flex items-center justify-center text-orange-600 font-bold text-lg">A</div>
+                            <h3 class="text-lg font-bold text-stone-800">Aleatoric Uncertainty</h3>
+                        </div>
+                        <span class="text-stone-400 text-2xl group-hover:text-orange-500 transition-transform duration-300" id="icon-aleatoric">+</span>
+                    </div>
+                    <p class="mt-3 text-stone-600 text-sm">Inherent noise in the data (e.g., blurry images, garbage labels).</p>
+                    <div id="desc-aleatoric" class="hidden mt-4 pt-4 border-t border-stone-100 text-sm text-stone-700 space-y-2 bg-orange-50/50 -mx-6 -mb-6 p-6 rounded-b-xl">
+                        <p><strong>Nature:</strong> Irreducible. More data won't fix this.</p>
+                        <p><strong>Solution in RUA-BERT:</strong> Detect high variance ($\sigma^2$) and down-weight these samples in the loss function.</p>
+                        <p><strong>Example:</strong> An image labeled "Dog" that is actually just static noise.</p>
+                    </div>
+                </div>
+
+                <!-- Epistemic Card -->
+                <div class="bg-white rounded-xl shadow-sm border border-stone-200 p-6 hover:shadow-md transition cursor-pointer group" onclick="toggleDefinition('epistemic')">
+                    <div class="flex items-start justify-between">
+                        <div class="flex items-center gap-3">
+                            <div class="w-10 h-10 rounded-full bg-blue-100 flex items-center justify-center text-blue-600 font-bold text-lg">E</div>
+                            <h3 class="text-lg font-bold text-stone-800">Epistemic Uncertainty</h3>
+                        </div>
+                        <span class="text-stone-400 text-2xl group-hover:text-blue-500 transition-transform duration-300" id="icon-epistemic">+</span>
+                    </div>
+                    <p class="mt-3 text-stone-600 text-sm">The model's lack of knowledge due to limited training data.</p>
+                    <div id="desc-epistemic" class="hidden mt-4 pt-4 border-t border-stone-100 text-sm text-stone-700 space-y-2 bg-blue-50/50 -mx-6 -mb-6 p-6 rounded-b-xl">
+                        <p><strong>Nature:</strong> Reducible. improved by seeing more diverse examples.</p>
+                        <p><strong>Solution in RUA-BERT:</strong> Measured via Monte Carlo (MC) Dropout to estimate confidence/calibration.</p>
+                        <p><strong>Example:</strong> The model has never seen a "Platypus" before and is unsure how to classify it.</p>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Section 2: The Problem -->
+        <section id="problem" class="scroll-mt-24">
+            <div class="grid md:grid-cols-3 gap-8 items-start">
+                <div class="md:col-span-1 space-y-4">
+                    <h2 class="text-2xl font-bold text-stone-900">2. The "Memorization" Trap</h2>
+                    <p class="text-stone-600 text-sm leading-relaxed">
+                        Transformers like BERT are powerful but "arrogant." When training on noisy data (e.g., 30% wrong labels), they initially learn simple patterns (clean data) but eventually start memorizing the noise to minimize loss.
+                    </p>
+                    <p class="text-stone-600 text-sm leading-relaxed">
+                        <strong>The chart</strong> illustrates this phenomenon described by Zhu et al. [4]. Standard BERT's validation accuracy drops as it overfits to noise. RUA-BERT aims to maintain performance by ignoring that noise.
+                    </p>
+                    <div class="bg-red-50 border-l-4 border-red-400 p-4 rounded-r-md">
+                        <h4 class="text-red-800 font-bold text-xs uppercase tracking-wide mb-1">Critical Gap</h4>
+                        <p class="text-red-700 text-xs">"Standard Cross-Entropy loss treats every training sample as absolute truth, forcing the model to memorize errors."</p>
+                    </div>
+                </div>
+                
+                <div class="md:col-span-2 bg-white rounded-xl shadow-sm border border-stone-200 p-6">
+                    <div class="flex justify-between items-center mb-4">
+                        <h3 class="font-bold text-stone-700">Simulated Training Dynamics: Noisy Labels</h3>
+                        <div class="flex gap-4 text-xs">
+                            <span class="flex items-center"><span class="w-3 h-3 rounded-full bg-stone-300 mr-2"></span>Standard BERT</span>
+                            <span class="flex items-center"><span class="w-3 h-3 rounded-full bg-blue-500 mr-2"></span>RUA-BERT (Goal)</span>
+                        </div>
+                    </div>
+                    <div class="chart-container">
+                        <canvas id="noiseChart"></canvas>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Section 3: Literature Timeline -->
+        <section id="literature" class="scroll-mt-24 bg-stone-100 rounded-2xl p-8">
+             <div class="mb-8">
+                <h2 class="text-2xl font-bold text-stone-900 mb-2">3. Research Evolution</h2>
+                <p class="text-stone-600">
+                    The path to RUA-BERT is paved by key discoveries in Bayesian Deep Learning and Noise Handling. This interactive timeline highlights the progression from theory to the identified gaps.
+                </p>
+            </div>
+            
+            <div class="relative border-l-2 border-stone-300 ml-4 space-y-8" id="timeline-container">
+                <!-- Timeline items injected by JS -->
+            </div>
+        </section>
+
+        <!-- Section 4: The Solution (Architecture) -->
+        <section id="solution" class="scroll-mt-24">
+            <div class="mb-8 text-center max-w-2xl mx-auto">
+                <h2 class="text-2xl font-bold text-stone-900 mb-2">4. The Solution: RUA-BERT</h2>
+                <p class="text-stone-600">
+                    Robust Uncertainty Aware BERT. A single-model architecture that disentangles noise types to filter "garbage" data dynamically. Interact with the diagram below to see how data flows through the system.
+                </p>
+            </div>
+
+            <div class="bg-white rounded-xl shadow-lg border border-stone-200 p-8 overflow-hidden">
+                <!-- Interactive Architecture Diagram -->
+                <div class="flex flex-col md:flex-row items-center justify-center gap-4 md:gap-8 relative">
+                    
+                    <!-- Input -->
+                    <div class="arch-box w-full md:w-32 h-24 bg-stone-100 border-2 border-stone-300 rounded-lg flex flex-col items-center justify-center text-center p-2"
+                         onmouseover="showArchDetails('input')" onclick="showArchDetails('input')">
+                        <span class="text-2xl mb-1">📄</span>
+                        <span class="font-bold text-xs text-stone-600">Noisy Input</span>
+                        <span class="text-[10px] text-stone-400">Text + Label</span>
+                    </div>
+
+                    <div class="text-stone-300 text-2xl hidden md:block">➔</div>
+                    <div class="text-stone-300 text-2xl md:hidden">⬇</div>
+
+                    <!-- Encoder -->
+                    <div class="arch-box w-full md:w-40 h-32 bg-indigo-50 border-2 border-indigo-200 rounded-lg flex flex-col items-center justify-center text-center p-2"
+                         onmouseover="showArchDetails('bert')" onclick="showArchDetails('bert')">
+                        <span class="text-2xl mb-1">🤖</span>
+                        <span class="font-bold text-sm text-indigo-800">BERT Encoder</span>
+                        <span class="text-[10px] text-indigo-500">bert-base-uncased</span>
+                        <span class="text-[10px] text-indigo-400 mt-1">MC Dropout Active</span>
+                    </div>
+
+                    <div class="text-stone-300 text-2xl hidden md:block">➔</div>
+                    <div class="text-stone-300 text-2xl md:hidden">⬇</div>
+
+                    <!-- Heads Container -->
+                    <div class="flex flex-col gap-4 w-full md:w-48">
+                        <!-- Head 1 -->
+                        <div class="arch-box h-16 bg-blue-50 border-2 border-blue-200 rounded-lg flex items-center justify-between px-4"
+                             onmouseover="showArchDetails('head1')" onclick="showArchDetails('head1')">
+                            <div class="text-left">
+                                <div class="font-bold text-xs text-blue-800">Prediction Head</div>
+                                <div class="text-[10px] text-blue-500">Class Logits ($\hat{y}$)</div>
+                            </div>
+                            <span class="text-lg">🎯</span>
+                        </div>
+                        <!-- Head 2 -->
+                        <div class="arch-box h-16 bg-orange-50 border-2 border-orange-200 rounded-lg flex items-center justify-between px-4"
+                             onmouseover="showArchDetails('head2')" onclick="showArchDetails('head2')">
+                            <div class="text-left">
+                                <div class="font-bold text-xs text-orange-800">Uncertainty Head</div>
+                                <div class="text-[10px] text-orange-500">Variance ($\sigma^2$)</div>
+                            </div>
+                            <span class="text-lg">📉</span>
+                        </div>
+                    </div>
+
+                     <div class="text-stone-300 text-2xl hidden md:block">➔</div>
+                    <div class="text-stone-300 text-2xl md:hidden">⬇</div>
+
+                    <!-- Loss -->
+                    <div class="arch-box w-full md:w-32 h-24 bg-teal-50 border-2 border-teal-200 rounded-lg flex flex-col items-center justify-center text-center p-2"
+                         onmouseover="showArchDetails('loss')" onclick="showArchDetails('loss')">
+                        <span class="text-2xl mb-1">⚖️</span>
+                        <span class="font-bold text-xs text-teal-800">Heteroscedastic Loss</span>
+                        <span class="text-[10px] text-teal-500">Down-weights high $\sigma^2$</span>
+                    </div>
+                </div>
+
+                <!-- Dynamic Description Area -->
+                <div class="mt-8 bg-stone-50 rounded-lg p-6 border-t-4 border-blue-500 min-h-[120px] transition-all" id="arch-description-box">
+                    <h3 class="font-bold text-stone-800 mb-2" id="arch-title">Hover over the diagram</h3>
+                    <p class="text-stone-600 text-sm" id="arch-text">Interact with the components above to understand how RUA-BERT processes noisy data differently from standard models.</p>
+                </div>
+            </div>
+        </section>
+
+        <!-- Section 5: Implementation & Tech Stack -->
+        <section id="tech" class="scroll-mt-24">
+             <div class="mb-8">
+                <h2 class="text-2xl font-bold text-stone-900 mb-2">5. Implementation Plan</h2>
+                <p class="text-stone-600">
+                    The research targets the Quora Question Pairs (QQP) dataset, simulating a low-resource environment with significant data corruption.
+                </p>
+            </div>
+
+            <div class="grid md:grid-cols-2 gap-8">
+                <!-- Dataset Info -->
+                <div class="bg-white rounded-xl shadow-sm border border-stone-200 p-6">
+                    <h3 class="font-bold text-stone-800 mb-4 border-b pb-2">Experimental Setup</h3>
+                    <div class="flex items-center gap-6">
+                        <div class="w-1/2">
+                            <div class="chart-container" style="height: 200px; max-height: 200px;">
+                                <canvas id="dataChart"></canvas>
+                            </div>
+                        </div>
+                        <div class="w-1/2 space-y-3 text-sm text-stone-600">
+                            <p><strong>Dataset:</strong> QQP (Quora Question Pairs)</p>
+                            <p><strong>Condition:</strong> 30% Corrupted Labels</p>
+                            <p><strong>Goal:</strong> Prove robustness without clean validation sets.</p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Tech Stack Grid -->
+                <div class="bg-white rounded-xl shadow-sm border border-stone-200 p-6">
+                    <h3 class="font-bold text-stone-800 mb-4 border-b pb-2">Technology Stack</h3>
+                    <div class="grid grid-cols-2 gap-4">
+                        <div class="p-3 bg-stone-50 rounded border border-stone-100">
+                            <div class="font-bold text-stone-700 text-sm">Language</div>
+                            <div class="text-stone-500 text-xs">Python 3.10+</div>
+                        </div>
+                        <div class="p-3 bg-stone-50 rounded border border-stone-100">
+                            <div class="font-bold text-stone-700 text-sm">Framework</div>
+                            <div class="text-stone-500 text-xs">PyTorch 2.0+</div>
+                        </div>
+                        <div class="p-3 bg-stone-50 rounded border border-stone-100">
+                            <div class="font-bold text-stone-700 text-sm">Model Backbone</div>
+                            <div class="text-stone-500 text-xs">Hugging Face (BERT Base)</div>
+                        </div>
+                        <div class="p-3 bg-stone-50 rounded border border-stone-100">
+                            <div class="font-bold text-stone-700 text-sm">Hardware</div>
+                            <div class="text-stone-500 text-xs">NVIDIA GPU</div>
+                        </div>
+                        <div class="col-span-2 p-3 bg-blue-50 rounded border border-blue-100">
+                            <div class="font-bold text-blue-800 text-sm">Core Mechanisms</div>
+                            <div class="text-blue-600 text-xs">Custom GNLL Loss Class & MC-Dropout Loop</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <footer class="text-center text-stone-400 text-sm pt-12 pb-6 border-t border-stone-200">
+            <p>Based on Research Proposal: "Disentangled Uncertainty as a Robustness Mechanism"</p>
+        </footer>
+
+    </main>
+
+    <script>
+        // --- Navigation Logic ---
+        function scrollToSection(id) {
+            const el = document.getElementById(id);
+            if (el) {
+                el.scrollIntoView({ behavior: 'smooth' });
+                // Close mobile menu if open
+                const menu = document.getElementById('mobile-menu');
+                if (!menu.classList.contains('hidden')) {
+                    menu.classList.add('hidden');
+                }
+            }
+        }
+
+        document.getElementById('mobile-menu-btn').addEventListener('click', () => {
+            const menu = document.getElementById('mobile-menu');
+            menu.classList.toggle('hidden');
+        });
+
+        // --- Data & Content ---
+        
+        // 1. Interactive Definitions (Aleatoric vs Epistemic)
+        function toggleDefinition(type) {
+            const desc = document.getElementById(`desc-${type}`);
+            const icon = document.getElementById(`icon-${type}`);
+            
+            if (desc.classList.contains('hidden')) {
+                desc.classList.remove('hidden');
+                icon.innerText = '−'; // minus sign
+                icon.classList.add('rotate-180');
+            } else {
+                desc.classList.add('hidden');
+                icon.innerText = '+';
+                icon.classList.remove('rotate-180');
+            }
+        }
+
+        // 2. Timeline Data
+        const timelineData = [
+            {
+                year: '1994',
+                author: 'Nix & Weigend',
+                title: 'Mean-Variance Estimation',
+                desc: 'First proposal to modify networks to output uncertainty (MVE) alongside predictions.',
+                tag: 'Foundation'
+            },
+            {
+                year: '2016',
+                author: 'Gal & Ghahramani',
+                title: 'MC Dropout',
+                desc: 'Demonstrated that keeping Dropout active during inference acts as a Bayesian approximation for Epistemic Uncertainty.',
+                tag: 'Method'
+            },
+            {
+                year: '2017',
+                author: 'Kendall & Gal',
+                title: 'Heteroscedastic Loss',
+                desc: 'Introduced mechanisms to handle Aleatoric Uncertainty in Computer Vision, predicting "variance" to weight loss.',
+                tag: 'Key Mechanism'
+            },
+            {
+                year: '2021',
+                author: 'Hüllermeier & Waegeman',
+                title: 'Uncertainty Taxonomy',
+                desc: 'Established the formal split between Aleatoric (Data noise) and Epistemic (Model ignorance).',
+                tag: 'Theory'
+            },
+            {
+                year: '2022',
+                author: 'Zhu et al.',
+                title: 'BERT & Label Noise',
+                desc: 'Analyzed BERT\'s "memorization" of noise, proving standard methods fail without early stopping.',
+                tag: 'Gap Identification'
+            },
+            {
+                year: 'Current',
+                author: 'Proposed Research',
+                title: 'RUA-BERT',
+                desc: 'Applying Aleatoric-Epistemic decomposition to NLP Transformers to solve label noise efficiently.',
+                tag: 'The Solution'
+            }
+        ];
+
+        // Render Timeline
+        const timelineContainer = document.getElementById('timeline-container');
+        timelineData.forEach(item => {
+            const div = document.createElement('div');
+            div.className = 'relative pl-8 group cursor-pointer';
+            div.innerHTML = `
+                <div class="absolute -left-[9px] top-0 w-4 h-4 rounded-full bg-white border-4 border-stone-300 group-hover:border-blue-500 transition-colors"></div>
+                <div class="text-xs font-bold text-stone-400 mb-1">${item.year}</div>
+                <h4 class="text-lg font-bold text-stone-800 group-hover:text-blue-600 transition-colors">${item.author}: ${item.title}</h4>
+                <span class="inline-block px-2 py-0.5 rounded bg-stone-100 text-stone-500 text-[10px] uppercase tracking-wide mb-2">${item.tag}</span>
+                <p class="text-stone-600 text-sm max-w-2xl hidden group-hover:block animate-fade-in">${item.desc}</p>
+            `;
+            timelineContainer.appendChild(div);
+        });
+
+        // 3. Architecture Diagram Interactions
+        const archInfo = {
+            'input': {
+                title: "Input with Noise",
+                text: "The raw dataset (QQP). In this experiment, 30% of labels are intentionally corrupted (e.g., 'Duplicate' labeled as 'Not Duplicate'). Standard models trust these blindly.",
+                color: "border-stone-500"
+            },
+            'bert': {
+                title: "BERT Encoder Backbone",
+                text: "A standard 'bert-base-uncased' model. Crucially, Dropout is kept ACTIVE during inference (Monte Carlo Dropout) to sample multiple predictions and measure Epistemic Uncertainty.",
+                color: "border-indigo-500"
+            },
+            'head1': {
+                title: "Prediction Head (Logits)",
+                text: "Standard classification output. It predicts the probability of the class (y). However, its contribution to the loss is gated by the Uncertainty Head.",
+                color: "border-blue-500"
+            },
+            'head2': {
+                title: "Uncertainty Head (Variance)",
+                text: "Predicts the log variance ($s = \\log \\sigma^2$) for the specific input. If the input is 'garbage' or confusing, this head predicts high variance.",
+                color: "border-orange-500"
+            },
+            'loss': {
+                title: "Heteroscedastic Loss Function",
+                text: "The Magic Sauce. Loss = $\\frac{1}{2 \\sigma^2} \\mathcal{L}_{standard} + \\frac{1}{2} \\log \\sigma^2$. <br> High variance reduces the penalty for a wrong prediction (ignoring noise) but adds a penalty for being uncertain (preventing infinite variance).",
+                color: "border-teal-500"
+            }
+        };
+
+        function showArchDetails(key) {
+            const info = archInfo[key];
+            const box = document.getElementById('arch-description-box');
+            const title = document.getElementById('arch-title');
+            const text = document.getElementById('arch-text');
+            
+            // Remove active class from all
+            document.querySelectorAll('.arch-box').forEach(el => el.classList.remove('arch-active'));
+            // Add to clicked/hovered (simple finding by onclick attribute matching is easiest here)
+            // In a real app we'd use IDs, but this works for the demo scope
+            // We'll rely on the visual update of the box mainly.
+            
+            box.className = `mt-8 bg-white rounded-lg p-6 border-t-4 shadow-sm transition-all ${info.color}`;
+            title.innerText = info.title;
+            title.className = "font-bold text-lg mb-2 text-stone-900";
+            text.innerHTML = info.text; // InnerHTML to support the math symbols/breaks
+        }
+
+        // 4. Charts Initialization
+        document.addEventListener('DOMContentLoaded', () => {
+            
+            // --- Chart 1: The Noise Problem (Line Chart) ---
+            const ctxNoise = document.getElementById('noiseChart').getContext('2d');
+            
+            // Simulating the data based on Zhu et al. findings
+            const epochs = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10];
+            const cleanAcc = [0.65, 0.72, 0.78, 0.81, 0.82, 0.82, 0.81, 0.80, 0.79, 0.78]; // Standard BERT Overfitting
+            const ruaAcc =   [0.64, 0.70, 0.75, 0.79, 0.81, 0.82, 0.83, 0.83, 0.83, 0.83]; // RUA Robustness (Ideal)
+
+            new Chart(ctxNoise, {
+                type: 'line',
+                data: {
+                    labels: epochs,
+                    datasets: [
+                        {
+                            label: 'Standard BERT (Validation Acc)',
+                            data: cleanAcc,
+                            borderColor: '#a8a29e', // Stone 400
+                            backgroundColor: '#a8a29e',
+                            borderWidth: 2,
+                            tension: 0.4,
+                            pointRadius: 3
+                        },
+                        {
+                            label: 'RUA-BERT (Target Performance)',
+                            data: ruaAcc,
+                            borderColor: '#3b82f6', // Blue 500
+                            backgroundColor: '#3b82f6',
+                            borderWidth: 3,
+                            tension: 0.4,
+                            pointRadius: 4
+                        }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: { position: 'bottom' },
+                        tooltip: {
+                            mode: 'index',
+                            intersect: false,
+                            callbacks: {
+                                label: function(context) {
+                                    return context.dataset.label + ': ' + (context.raw * 100).toFixed(1) + '%';
+                                }
+                            }
+                        },
+                        annotation: {
+                            // Note: Annotation plugin not loaded, using title instead for simplicity
+                        }
+                    },
+                    scales: {
+                        y: {
+                            title: { display: true, text: 'Accuracy' },
+                            min: 0.6,
+                            max: 0.9
+                        },
+                        x: {
+                            title: { display: true, text: 'Training Epochs' }
+                        }
+                    }
+                }
+            });
+
+            // --- Chart 2: Dataset Split (Donut) ---
+            const ctxData = document.getElementById('dataChart').getContext('2d');
+            new Chart(ctxData, {
+                type: 'doughnut',
+                data: {
+                    labels: ['Clean Labels', 'Corrupted Labels (Noise)'],
+                    datasets: [{
+                        data: [70, 30],
+                        backgroundColor: [
+                            '#e7e5e4', // Stone 200 (Clean)
+                            '#f97316'  // Orange 500 (Noise)
+                        ],
+                        borderWidth: 0,
+                        hoverOffset: 4
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: { display: false },
+                        tooltip: {
+                            callbacks: {
+                                label: function(context) {
+                                    return context.label + ': ' + context.raw + '%';
+                                }
+                            }
+                        }
+                    },
+                    cutout: '70%'
+                }
+            });
+
+        });
+    </script>
+</body>
+</html>
